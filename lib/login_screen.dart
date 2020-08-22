@@ -13,11 +13,10 @@ class MyRegex {
 
 class LoginScreen extends StatelessWidget {
   StatefulWidget _mainScreen;
+
   LoginScreen(StatefulWidget widget) {
     _mainScreen = widget;
   }
-
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Duration get loginTime => Duration(milliseconds: 750); // 2250
 
@@ -25,36 +24,37 @@ class LoginScreen extends StatelessWidget {
     print('Name: ${data.name}');
     return Future.delayed(loginTime).then((_) async {
       if (data.name.length == 0 && data.password.length == 0) {
-        AuthResult _authRes;
+        UserCredential _authRes;
         try {
-          _authRes = await _auth.signInAnonymously();
+          _authRes = await FirebaseAuth.instance.signInAnonymously();
         } catch (error) {
-          if (error is! PlatformException) {
+          if (error is! FirebaseAuthException) {
             return 'Unknown error';
           }
           switch (error.code) {
-            case 'ERROR_OPERATION_NOT_ALLOWED':
+            case 'operation-not-allowed':
               return "Anonymous access doesn't allow.";
           }
         }
         return null;
       } else {
-        AuthResult _authRes;
+        UserCredential _authRes;
         try {
-          _authRes = await _auth.signInWithEmailAndPassword(
+          _authRes = await FirebaseAuth.instance.signInWithEmailAndPassword(
               email: data.name, password: data.password);
         } catch (error) {
-          if (error is! PlatformException) {
+          if (error is! FirebaseAuthException) {
             return 'Unknown error';
           }
           switch (error.code) {
-            // add more error cases
-            case 'ERROR_USER_NOT_FOUND':
-              return "No any user corresponding to the given email address.";
-            case 'ERROR_WRONG_PASSWORD':
-              return "The password is wrong.";
-            case 'ERROR_TOO_MANY_REQUESTS':
-              return "There was too many attempts to sign in as this user.";
+            case 'invalid-email':
+              return 'The email address is not valid';
+            case 'user-disabled':
+              return "The user corresponding to the given email has been disabled.";
+            case 'user-not-found':
+              return "There is no user corresponding to the given email.";
+            case 'wrong-password':
+              return "The password is invalid for the given email, or the account.";
           }
         }
       }
@@ -62,28 +62,28 @@ class LoginScreen extends StatelessWidget {
     });
   }
 
-  Future<AuthResult> signUpWithEmail(LoginData data) async {
-    return _auth.createUserWithEmailAndPassword(
+  Future<UserCredential> signUpWithEmail(LoginData data) async {
+    return FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: data.name, password: data.password);
   }
 
   Future<String> _registerUser(LoginData data) async {
     print('Name: ${data.name}');
     return Future.delayed(loginTime).then((_) async {
-      AuthResult _authRes;
+      UserCredential _authRes;
       try {
         _authRes = await signUpWithEmail(data);
       } catch (error) {
-        if (error is! PlatformException) {
+        if (error is! FirebaseAuthException) {
           return 'Unknown error';
         }
         switch (error.code) {
-          case 'ERROR_WEAK_PASSWORD':
-            return 'The password is not strong enough.';
-          case 'ERROR_INVALID_EMAIL':
-            return 'The email address is malformed.';
-          case 'ERROR_EMAIL_ALREADY_IN_USE':
+          case 'email-already-in-use':
             return 'The email is already in use by a different account.';
+          case 'invalid-email':
+            return 'The email address is malformed.';
+          case 'weak-password':
+            return 'The password is not strong enough.';
         }
       }
       return null;
@@ -94,12 +94,12 @@ class LoginScreen extends StatelessWidget {
     print('Name: $name');
     return Future.delayed(loginTime).then((_) async {
       try {
-        await _auth.sendPasswordResetEmail(email: name);
-      } on PlatformException catch (e) {
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: name);
+      } on FirebaseAuthException catch (e) {
         switch (e.code) {
-          case 'ERROR_INVALID_EMAIL':
+          case 'invalid-email':
             return 'The email address is malformed.';
-          case 'ERROR_INVALID_EMAIL':
+          case 'user-not-found':
             return 'There is no user corresponding to the given email address.';
         }
       }

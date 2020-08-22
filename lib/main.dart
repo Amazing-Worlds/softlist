@@ -1,20 +1,27 @@
 // Copyright 2020 Amazing Worlds. All rights reserved.
 /*
 TODO:
-  3. show login help about anonynous w/o registration
-  4. Storage data
+  1. Storage data
   - save/load list to firebase if user is authanticated by firebase
   - save/load list to SharedPreferences if user is no authanticated
-  1. show user info: email, add logout button
-  5. add settings: separate page, name, reset all data
+  2. show login help about anonynous w/o registration, 
+     need to implement anonymous login button in the flutter login page
+  3. show user info: email, add logout button
+  4. add settings: separate page, name, reset all data
 */
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+//firebase
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'login_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(SoftList());
 }
 
@@ -56,7 +63,7 @@ class _MyTaskListState extends State<MyTaskList> {
     _loadList();
   }
 
-  _loadList() async {
+  void _loadList() async {
     //SharedPreferences preferences = await SharedPreferences.getInstance();
     //preferences.clear();
 
