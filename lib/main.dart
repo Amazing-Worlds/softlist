@@ -2,8 +2,7 @@
 /*
 TODO:
   1. Storage data
-  - save/load list to firebase if user is authanticated by firebase
-  - save/load list to SharedPreferences if user is no authanticated
+  - save/load list to SharedPreferences if user is no authanticated, remove anon auth at all, change checks  
   2. show login help about anonynous w/o registration, 
      need to implement anonymous login button in the flutter login page
   3. show user info: email, add logout button
@@ -71,7 +70,8 @@ class _MyTaskListState extends State<MyTaskList> {
 
   void _loadList() async {
     FirebaseAuth auth = FirebaseAuth.instance;
-    // TODO: what is no connection???
+    // TODO: what should we do if no connection???
+    // TODO: handle anonymous login
 
     if (auth.currentUser.isAnonymous == true) {
       SharedPreferences _prefs = await SharedPreferences.getInstance();
@@ -84,12 +84,11 @@ class _MyTaskListState extends State<MyTaskList> {
       // load from firestore
       CollectionReference users =
           FirebaseFirestore.instance.collection('users');
-      //print('loadList userID:' + auth.currentUser.uid);
       DocumentSnapshot snapShot = await users.doc(auth.currentUser.uid).get();
 
       Map<String, dynamic> data = snapShot.data();
       if (data == null) {
-        print('Data was NOT loaded');
+        print('Data was not loaded');
         //setState(() {});
         return;
       }
@@ -103,7 +102,7 @@ class _MyTaskListState extends State<MyTaskList> {
       }
     }
 
-    setState(() {});
+    //setState(() {});
   }
 
   void _saveList() async {
@@ -159,38 +158,77 @@ class _MyTaskListState extends State<MyTaskList> {
   */
   }
 
+  void _loadListFromSnap(AsyncSnapshot<DocumentSnapshot> snapshot) {
+    // load document from firestore
+    if (snapshot.hasData == false) {
+      return;
+    }
+
+    Map<String, dynamic> data = snapshot.data.data();
+    if (data == null) {
+      return;
+    }
+
+    if (data.containsKey('FirstListNames') == true) {
+      _items = List<String>.from(jsonDecode(data['FirstListNames'])).toList();
+    }
+    if (data.containsKey('FirstListBool') == true) {
+      _selectedLT = List<bool>.from(jsonDecode(data['FirstListBool'])).toList();
+    }
+  }
+
   Widget _buildSuggestions() {
-    return Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-      Expanded(
-        child: ListView.separated(
-          padding: EdgeInsets.all(14.0),
-          itemBuilder: (ctx, index) => _buildListItem(ctx, index),
-          separatorBuilder: (_, index) => Divider(),
-          itemCount: _items.length,
-        ),
-      ),
-      TextField(
-        //CupertinoTextField(
-        //clearButtonMode: OverlayVisibilityMode.always,
-        onSubmitted: (text) {
-          setState(() {
-            _items.add(text);
-            _selectedLT.add(false);
-            _nameController.clear();
-            _saveList();
-          });
-        },
-        controller: _nameController,
-        decoration: InputDecoration(
-          border: OutlineInputBorder(),
-          labelText: 'New list item',
-        ),
-      )
-    ]);
+    // Implemennt function for anonymous use
+
+    DocumentReference docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(FirebaseAuth.instance.currentUser.uid);
+
+    return StreamBuilder<DocumentSnapshot>(
+        stream: docRef.snapshots(),
+        builder:
+            (BuildContext context, AsyncSnapshot<DocumentSnapshot> snapshot) {
+          if (snapshot.hasError) {
+            print("Error occured");
+            return Text("Error occured");
+          }
+
+          if (snapshot.connectionState != ConnectionState.waiting) {
+            _loadListFromSnap(snapshot);
+          }
+
+          return Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            Expanded(
+              child: ListView.separated(
+                padding: EdgeInsets.all(14.0),
+                itemBuilder: (ctx, index) => _buildListItem(ctx, index),
+                separatorBuilder: (_, index) => Divider(),
+                itemCount: _items.length,
+              ),
+            ),
+            TextField(
+              //CupertinoTextField(
+              //clearButtonMode: OverlayVisibilityMode.always,
+              onSubmitted: (text) {
+                setState(() {
+                  _items.add(text);
+                  _selectedLT.add(false);
+                  _nameController.clear();
+                  _saveList();
+                });
+              },
+              controller: _nameController,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'New list item',
+              ),
+            )
+          ]);
+        });
   }
 
   Widget _buildListItem(BuildContext ctx, int index) {
-    final _item = _items[index];
+    var _item = _items[index];
 
     Future<bool> _confirmDismiss(DismissDirection direction) async {
       if (direction == DismissDirection.startToEnd) {
@@ -201,14 +239,14 @@ class _MyTaskListState extends State<MyTaskList> {
       }
     }
 
-    CollectionReference users = FirebaseFirestore.instance.collection('users');
-
     return Dismissible(
         confirmDismiss: (direction) => _confirmDismiss(direction),
         onDismissed: (direction) {
           setState(() {
-            _items.removeAt(index);
-            _selectedLT.removeAt(index);
+            if (_items.contains(_item)) {
+              _items.removeAt(index);
+              _selectedLT.removeAt(index);
+            }
             _saveList();
           });
         },
@@ -227,7 +265,11 @@ class _MyTaskListState extends State<MyTaskList> {
           alignment: Alignment.centerRight,
           child: Icon(Icons.check),
         ),
-        key: ValueKey(_item),
+        key: UniqueKey(),
+        dismissThresholds: {
+          DismissDirection.startToEnd: 0.4,
+          DismissDirection.endToStart: 0.7
+        },
         child: ListTile(
             leading: _selectedLT[index] == true
                 ? Icon(Icons.check, color: Colors.green)
