@@ -1,9 +1,11 @@
 // Copyright 2020 Amazing Worlds. All rights reserved.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+//import 'package:flutter/services.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:flutter_login/flutter_login.dart';
 
 class MyRegex {
@@ -86,6 +88,15 @@ class LoginScreen extends StatelessWidget {
             return 'The password is not strong enough.';
         }
       }
+      // create document about user in the firestore
+      CollectionReference users =
+          FirebaseFirestore.instance.collection('users');
+      print(_authRes.user.uid);
+      users
+          .doc(_authRes.user.uid)
+          .set({'userID': _authRes.user.uid}).catchError(
+              (error) => print("Failed to add user: $error"));
+
       return null;
     });
   }

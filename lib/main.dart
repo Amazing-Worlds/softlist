@@ -7,16 +7,23 @@ TODO:
   2. show login help about anonynous w/o registration, 
      need to implement anonymous login button in the flutter login page
   3. show user info: email, add logout button
+  0. check for auth before login screen . stete should be persisting 
+  not need to auth again 
   4. add settings: separate page, name, reset all data
+  5. delete all user data
 */
 
 import 'package:flutter/material.dart';
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 //firebase
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// internal modules
 import 'login_screen.dart';
 
 void main() async {
@@ -52,7 +59,6 @@ class MyTaskList extends StatefulWidget {
 }
 
 class _MyTaskListState extends State<MyTaskList> {
-  static int _itemCount = 0;
   List<String> _items = [];
   List<bool> _selectedLT = [];
   TextEditingController _nameController = TextEditingController();
@@ -64,35 +70,73 @@ class _MyTaskListState extends State<MyTaskList> {
   }
 
   void _loadList() async {
-    //SharedPreferences preferences = await SharedPreferences.getInstance();
-    //preferences.clear();
+    FirebaseAuth auth = FirebaseAuth.instance;
+    // TODO: what is no connection???
 
-    SharedPreferences _prefs = await SharedPreferences.getInstance();
-    _itemCount = _prefs.getInt('FirstListLength') ?? 0;
-    if (_itemCount == 0) {
-      _items = [];
-      _selectedLT = [];
-      return;
+    if (auth.currentUser.isAnonymous == true) {
+      SharedPreferences _prefs = await SharedPreferences.getInstance();
+
+      _items = _prefs.getStringList('FirstListNames');
+      List<String> _itemsBoolString = _prefs.getStringList('FirstListBool');
+      _selectedLT = List.generate(
+          _items.length, (i) => _itemsBoolString[i] == "true" ? true : false);
+    } else {
+      // load from firestore
+      CollectionReference users =
+          FirebaseFirestore.instance.collection('users');
+      //print('loadList userID:' + auth.currentUser.uid);
+      DocumentSnapshot snapShot = await users.doc(auth.currentUser.uid).get();
+
+      Map<String, dynamic> data = snapShot.data();
+      if (data == null) {
+        print('Data was NOT loaded');
+        //setState(() {});
+        return;
+      }
+
+      if (data.containsKey('FirstListNames') == true) {
+        _items = List<String>.from(jsonDecode(data['FirstListNames'])).toList();
+      }
+      if (data.containsKey('FirstListBool') == true) {
+        _selectedLT =
+            List<bool>.from(jsonDecode(data['FirstListBool'])).toList();
+      }
     }
-
-    _items = _prefs.getStringList('FirstListNames');
-    List<String> _itemsBoolString = _prefs.getStringList('FirstListBool');
-    _selectedLT = List.generate(
-        _itemCount, (i) => _itemsBoolString[i] == "true" ? true : false);
 
     setState(() {});
   }
 
-  _saveList() async {
-    SharedPreferences _prefs = await SharedPreferences.getInstance();
-    _prefs.setInt('FirstListLength', _itemCount);
-    if (_itemCount == 0) return;
+  void _saveList() async {
+    FirebaseAuth auth = FirebaseAuth.instance;
 
-    _prefs.setStringList('FirstListNames', _items);
-    _prefs.setStringList('FirstListBool',
-        List.generate(_itemCount, (i) => _selectedLT[i].toString()));
+    if (auth.currentUser.isAnonymous == true) {
+      // local save
+      SharedPreferences _prefs = await SharedPreferences.getInstance();
 
-    //setState(() {});
+      _prefs.setStringList('FirstListNames', _items);
+      _prefs.setStringList('FirstListBool',
+          List.generate(_items.length, (i) => _selectedLT[i].toString()));
+    } else {
+      // save document into firestore
+
+      CollectionReference users =
+          FirebaseFirestore.instance.collection('users');
+
+      // check existing of document if no create it
+      DocumentSnapshot ref = await users.doc(auth.currentUser.uid).get();
+      if (ref.exists == false) {
+        users.doc(auth.currentUser.uid).set({
+          'userID': auth.currentUser.uid,
+          'FirstListNames': jsonEncode(_items),
+          'FirstListBool': jsonEncode(_selectedLT)
+        }).catchError((onError) => print('Failed to add doc: $onError'));
+      } else {
+        users.doc(auth.currentUser.uid).update({
+          'FirstListNames': jsonEncode(_items),
+          'FirstListBool': jsonEncode(_selectedLT)
+        }).catchError((onError) => print('Failed to update doc: $onError'));
+      }
+    }
   }
 
   @override
@@ -122,7 +166,7 @@ class _MyTaskListState extends State<MyTaskList> {
           padding: EdgeInsets.all(14.0),
           itemBuilder: (ctx, index) => _buildListItem(ctx, index),
           separatorBuilder: (_, index) => Divider(),
-          itemCount: _itemCount,
+          itemCount: _items.length,
         ),
       ),
       TextField(
@@ -132,7 +176,6 @@ class _MyTaskListState extends State<MyTaskList> {
           setState(() {
             _items.add(text);
             _selectedLT.add(false);
-            _itemCount++;
             _nameController.clear();
             _saveList();
           });
@@ -158,13 +201,14 @@ class _MyTaskListState extends State<MyTaskList> {
       }
     }
 
+    CollectionReference users = FirebaseFirestore.instance.collection('users');
+
     return Dismissible(
         confirmDismiss: (direction) => _confirmDismiss(direction),
         onDismissed: (direction) {
           setState(() {
             _items.removeAt(index);
             _selectedLT.removeAt(index);
-            _itemCount--;
             _saveList();
           });
         },
