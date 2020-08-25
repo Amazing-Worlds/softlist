@@ -26,6 +26,11 @@ class LoginScreen extends StatelessWidget {
     print('Name: ${data.name}');
     return Future.delayed(loginTime).then((_) async {
       if (data.name.length == 0 && data.password.length == 0) {
+        // anonymous login w/o interaction with firebase
+
+        // signOut for 100% sure
+        await FirebaseAuth.instance.signOut();
+/*
         UserCredential _authRes;
         try {
           _authRes = await FirebaseAuth.instance.signInAnonymously();
@@ -38,6 +43,7 @@ class LoginScreen extends StatelessWidget {
               return "Anonymous access doesn't allow.";
           }
         }
+*/
         return null;
       } else {
         UserCredential _authRes;

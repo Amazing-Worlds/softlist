@@ -1,8 +1,6 @@
 // Copyright 2020 Amazing Worlds. All rights reserved.
 /*
 TODO:
-  1. Storage data
-  - save/load list to SharedPreferences if user is no authanticated, remove anon auth at all, change checks  
   2. show login help about anonynous w/o registration, 
      need to implement anonymous login button in the flutter login page
   3. show user info: email, add logout button
@@ -70,10 +68,9 @@ class _MyTaskListState extends State<MyTaskList> {
 
   void _loadList() async {
     FirebaseAuth auth = FirebaseAuth.instance;
-    // TODO: what should we do if no connection???
-    // TODO: handle anonymous login
 
-    if (auth.currentUser.isAnonymous == true) {
+    if (auth.currentUser == null) {
+      // anonym user
       SharedPreferences _prefs = await SharedPreferences.getInstance();
 
       _items = _prefs.getStringList('FirstListNames');
@@ -102,13 +99,14 @@ class _MyTaskListState extends State<MyTaskList> {
       }
     }
 
-    //setState(() {});
+    setState(() {});
   }
 
   void _saveList() async {
     FirebaseAuth auth = FirebaseAuth.instance;
 
-    if (auth.currentUser.isAnonymous == true) {
+    //if (auth.currentUser.isAnonymous == true) {
+    if (auth.currentUser == null) {
       // local save
       SharedPreferences _prefs = await SharedPreferences.getInstance();
 
@@ -177,8 +175,42 @@ class _MyTaskListState extends State<MyTaskList> {
     }
   }
 
+  Widget _createColumn() {
+    return Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+      Expanded(
+        child: ListView.separated(
+          padding: EdgeInsets.all(14.0),
+          itemBuilder: (ctx, index) => _buildListItem(ctx, index),
+          separatorBuilder: (_, index) => Divider(),
+          itemCount: _items.length,
+        ),
+      ),
+      TextField(
+        //CupertinoTextField(
+        //clearButtonMode: OverlayVisibilityMode.always,
+        onSubmitted: (text) {
+          setState(() {
+            _items.add(text);
+            _selectedLT.add(false);
+            _nameController.clear();
+            _saveList();
+          });
+        },
+        controller: _nameController,
+        decoration: InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: 'New list item',
+        ),
+      )
+    ]);
+  }
+
   Widget _buildSuggestions() {
-    // Implemennt function for anonymous use
+    FirebaseAuth auth = FirebaseAuth.instance;
+
+    if (auth.currentUser == null) {
+      return _createColumn();
+    }
 
     DocumentReference docRef = FirebaseFirestore.instance
         .collection('users')
@@ -196,34 +228,7 @@ class _MyTaskListState extends State<MyTaskList> {
           if (snapshot.connectionState != ConnectionState.waiting) {
             _loadListFromSnap(snapshot);
           }
-
-          return Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-            Expanded(
-              child: ListView.separated(
-                padding: EdgeInsets.all(14.0),
-                itemBuilder: (ctx, index) => _buildListItem(ctx, index),
-                separatorBuilder: (_, index) => Divider(),
-                itemCount: _items.length,
-              ),
-            ),
-            TextField(
-              //CupertinoTextField(
-              //clearButtonMode: OverlayVisibilityMode.always,
-              onSubmitted: (text) {
-                setState(() {
-                  _items.add(text);
-                  _selectedLT.add(false);
-                  _nameController.clear();
-                  _saveList();
-                });
-              },
-              controller: _nameController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'New list item',
-              ),
-            )
-          ]);
+          return _createColumn();
         });
   }
 
