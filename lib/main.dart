@@ -1,13 +1,15 @@
 // Copyright 2020 Amazing Worlds. All rights reserved.
 /*
 TODO:
-  2. show login help about anonynous w/o registration, 
+  1. add logout button
+  2. check for auth before login screen . stete should be persisting
+  not need to auth again if user has already entered password before
+  3. show login help about anonynous w/o registration,
      need to implement anonymous login button in the flutter login page
-  3. show user info: email, add logout button
-  0. check for auth before login screen . stete should be persisting 
-  not need to auth again 
-  4. add settings: separate page, name, reset all data
-  5. delete all user data
+  4. show user email (before @)
+  4. user settigns info: separate page, email, change password
+  6. delete all user data
+  7. multy lists for money - add/remove lists
 */
 
 import 'package:flutter/material.dart';
@@ -272,8 +274,8 @@ class _MyTaskListState extends State<MyTaskList> {
         ),
         key: UniqueKey(),
         dismissThresholds: {
-          DismissDirection.startToEnd: 0.4,
-          DismissDirection.endToStart: 0.7
+          DismissDirection.startToEnd: 0.35,
+          DismissDirection.endToStart: 0.35
         },
         child: ListTile(
             leading: _selectedLT[index] == true
