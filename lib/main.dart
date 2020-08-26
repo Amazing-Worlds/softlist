@@ -1,7 +1,10 @@
 // Copyright 2020 Amazing Worlds. All rights reserved.
 /*
 TODO:
+  0. Open Drawer from icon
+  0.1 show email of the user if it was logged or anonym if not
   1. add logout button
+  1.5 comment opening multy task list page
   2. check for auth before login screen . stete should be persisting
   not need to auth again if user has already entered password before
   3. show login help about anonynous w/o registration,
@@ -10,8 +13,16 @@ TODO:
   4. user settigns info: separate page, email, change password
   6. delete all user data
   7. multy lists for money - add/remove lists
+
+  stage 2:
+    Perfomance optimization
+    Cupertino specific design and make it mixed with Material, test on Android
+    https://flutter.dev/docs/development/data-and-backend/state-mgmt/simple
+    https://pub.dev/packages/provider
+    https://codelabs.developers.google.com/codelabs/first-flutter-app-pt2/#5
 */
 
+//import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 
@@ -138,12 +149,80 @@ class _MyTaskListState extends State<MyTaskList> {
     }
   }
 
+/*
+  void settingsPage(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(
+      builder: (BuildContext context) {
+        return CupertinoPageScaffold(
+            child: Column(children: [
+          AppBar(
+            title: const Text('Next page'),
+          ),
+          const Center(
+            child: Text(
+              'This is the next page',
+              style: TextStyle(fontSize: 24),
+            ),
+          ),
+        ]));
+      },
+    ));
+  }
+*/
+  Widget createDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          AppBar(
+              title: Text('Profile'),
+              leading: IconButton(
+                icon: const Icon(Icons.settings_cell),
+                tooltip: 'Profile',
+                onPressed: () {
+                  //settingsPage(context);
+                  //Scaffold.of(context).openDrawer();
+                },
+              )),
+          ListTile(
+            leading: Icon(Icons.message),
+            title: Text('Messages'),
+          ),
+          ListTile(
+            leading: Icon(Icons.exit_to_app),
+            title: Text('Log out'),
+            onTap: () {
+              // Close Drawer
+              Navigator.pop(context);
+              // return to login screen
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: createDrawer(context),
       appBar: AppBar(
-        title: Text('My First List'),
-      ),
+          title: Text('My First List'),
+          /*actions: <Widget>[const Icon(Icons.settings),
+            tooltip: 'Profile',
+            onPressed: () {
+              // Open Drawer
+              //settingsPage(context);
+              //Scaffold.of(context).openDrawer();
+            },],*/
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu),
+              tooltip: 'Profile',
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          )),
       bottomNavigationBar: BottomAppBar(
         color: Colors.white,
         child: Text(''),
