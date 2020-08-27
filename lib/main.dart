@@ -1,18 +1,10 @@
 // Copyright 2020 Amazing Worlds. All rights reserved.
 /*
 TODO:
-  0. Open Drawer from icon
-  0.1 show email of the user if it was logged or anonym if not
-  1. add logout button
-  1.5 comment opening multy task list page
-  2. check for auth before login screen . stete should be persisting
-  not need to auth again if user has already entered password before
-  3. show login help about anonynous w/o registration,
+  1. show login help about anonynous w/o registration,
      need to implement anonymous login button in the flutter login page
-  4. show user email (before @)
-  4. user settigns info: separate page, email, change password
-  6. delete all user data
-  7. multy lists for money - add/remove lists
+  2. user settigns info: change password, delete all user data
+  3. multy lists for money - add/remove many lists
 
   stage 2:
     Perfomance optimization
@@ -170,31 +162,33 @@ class _MyTaskListState extends State<MyTaskList> {
   }
 */
   Widget createDrawer(BuildContext context) {
+    FirebaseAuth auth = FirebaseAuth.instance;
+    String userName;
+    if (auth.currentUser == null) {
+      userName = 'Anonymous';
+    } else {
+      userName = auth.currentUser.email;
+    }
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
           AppBar(
-              title: Text('Profile'),
-              leading: IconButton(
-                icon: const Icon(Icons.settings_cell),
-                tooltip: 'Profile',
-                onPressed: () {
-                  //settingsPage(context);
-                  //Scaffold.of(context).openDrawer();
-                },
-              )),
-          ListTile(
-            leading: Icon(Icons.message),
-            title: Text('Messages'),
-          ),
+              title: Text('$userName'),
+              leading: IconButton(icon: const Icon(Icons.settings))),
           ListTile(
             leading: Icon(Icons.exit_to_app),
             title: Text('Log out'),
-            onTap: () {
-              // Close Drawer
-              Navigator.pop(context);
-              // return to login screen
+            onTap: () async {
+              if (auth.currentUser == null) {
+                //SharedPreferences.getInstance().then((value) => value.setBool('IsAnonymLogged', false));
+              } else {
+                await auth.signOut();
+              }
+              Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => LoginScreen(MyTaskList())));
             },
           ),
         ],
@@ -202,7 +196,6 @@ class _MyTaskListState extends State<MyTaskList> {
     );
   }
 
-  final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -320,7 +313,10 @@ class _MyTaskListState extends State<MyTaskList> {
       if (direction == DismissDirection.startToEnd) {
         return true;
       } else {
-        setState(() => _selectedLT[index] = !_selectedLT[index]);
+        setState(() {
+          _selectedLT[index] = !_selectedLT[index];
+          _saveList();
+        });
         return false;
       }
     }
@@ -329,11 +325,15 @@ class _MyTaskListState extends State<MyTaskList> {
         confirmDismiss: (direction) => _confirmDismiss(direction),
         onDismissed: (direction) {
           setState(() {
-            if (_items.contains(_item)) {
+            if (_items.contains(_item) &&
+                direction == DismissDirection.startToEnd) {
               _items.removeAt(index);
               _selectedLT.removeAt(index);
+              _saveList();
+            } else if (_items.contains(_item) &&
+                direction == DismissDirection.endToStart) {
+              throw Exception('Impossible action');
             }
-            _saveList();
           });
         },
         background: Container(
@@ -353,8 +353,8 @@ class _MyTaskListState extends State<MyTaskList> {
         ),
         key: UniqueKey(),
         dismissThresholds: {
-          DismissDirection.startToEnd: 0.35,
-          DismissDirection.endToStart: 0.35
+          DismissDirection.startToEnd: 0.4,
+          DismissDirection.endToStart: 0.4
         },
         child: ListTile(
             leading: _selectedLT[index] == true

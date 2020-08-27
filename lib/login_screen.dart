@@ -1,7 +1,7 @@
 // Copyright 2020 Amazing Worlds. All rights reserved.
 
 import 'package:flutter/material.dart';
-//import 'package:flutter/services.dart';
+//import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -26,11 +26,11 @@ class LoginScreen extends StatelessWidget {
     print('Name: ${data.name}');
     return Future.delayed(loginTime).then((_) async {
       if (data.name.length == 0 && data.password.length == 0) {
+/*
+        await SharedPreferences.getInstance()
+            .then((value) => value.setBool('IsAnonymLogged', true));
         // anonymous login w/o interaction with firebase
 
-        // signOut for 100% sure
-        await FirebaseAuth.instance.signOut();
-/*
         UserCredential _authRes;
         try {
           _authRes = await FirebaseAuth.instance.signInAnonymously();
@@ -46,10 +46,10 @@ class LoginScreen extends StatelessWidget {
 */
         return null;
       } else {
-        UserCredential _authRes;
         try {
-          _authRes = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
               email: data.name, password: data.password);
+          return null;
         } catch (error) {
           if (error is! FirebaseAuthException) {
             return 'Unknown error';
@@ -63,10 +63,12 @@ class LoginScreen extends StatelessWidget {
               return "There is no user corresponding to the given email.";
             case 'wrong-password':
               return "The password is invalid for the given email, or the account.";
+            default:
+              return error.toString();
           }
         }
       }
-      return null;
+      //return 'Unknown error';
     });
   }
 
@@ -146,6 +148,40 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (FirebaseAuth.instance.currentUser != null) {
+      return _mainScreen;
+    }
+/*
+    return FutureBuilder<bool>(
+        future: SharedPreferences.getInstance()
+            .then((value) => value.getBool('IsAnonymLogged')),
+        builder: (BuildContext context, AsyncSnapshot<bool> isAnonymLogged) {
+          if (FirebaseAuth.instance.currentUser != null) {
+            SharedPreferences.getInstance()
+                .then((value) => value.setBool('IsAnonymLogged', false));
+            return _mainScreen;
+          }
+
+          if (isAnonymLogged.hasData == true) if (isAnonymLogged.data == true) {
+            return _mainScreen;
+          }
+
+          return FlutterLogin(
+            // ADD PROPER MESSAGES ABOUT ANONYMOUS LOGINS
+            title: 'Softlist',
+            //logo: 'images/Icon-App-83.5x83.5@2x.png',
+            onLogin: _authUser,
+            onSignup: _registerUser,
+            emailValidator: emailValidator,
+            passwordValidator: passValidator,
+            onSubmitAnimationCompleted: () {
+              Navigator.of(context).pushReplacement(MaterialPageRoute(
+                builder: (context) => _mainScreen,
+              ));
+            },
+            onRecoverPassword: _recoverPassword,
+          );
+        });*/
     return FlutterLogin(
       // ADD PROPER MESSAGES ABOUT ANONYMOUS LOGINS
       title: 'Softlist',
